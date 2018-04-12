@@ -199,33 +199,34 @@ If you're not defining variables or an authfile you will be prompted to enter yo
                 elif int(diff) >= options.warningThres:
                     if options.debug: print "DEBUG: Yum sync difference (" + str(diff) + ") is higher than warning threshold (" + str(options.warningThres) + ")"
                     if channel not in errors: errors.append(channel)
-
-    #check repodata age
-    for channel in options.channels:
-        #check for *.new files (indicator for running repodata rebuild)
-        newfiles = glob.glob("/var/cache/rhn/repodata/"+channel+"/*.new")
-        if len(newfiles) >= 1:
-            #rebuild in progress, check timestamp of first file
-            errors.append(channel)
-        #check for outdated repodata
-        try:
-            stamp = datetime.datetime.fromtimestamp(os.path.getmtime("/var/cache/rhn/repodata/"+channel+"/repomd.xml"))
-            now = datetime.datetime.today()
-            diff = now - stamp
-            diff = diff.seconds / 3600 + diff.days * 24
-            if options.debug: print "DEBUG: Difference for /var/cache/rhn/repodata/"+channel+"/repomd.xml is "+str(diff)+" hours"
-            if int(diff) >= options.criticalThres:
-                if options.debug: print "DEBUG: File system timestamp difference (" + str(diff) + ") is higher than critical threshold (" + str(options.criticalThres) + ")"
-                if channel not in errors: errors.append(channel)
+                        
+    else:                
+        #check repodata age
+        for channel in options.channels:
+            #check for *.new files (indicator for running repodata rebuild)
+            newfiles = glob.glob("/var/cache/rhn/repodata/"+channel+"/*.new")
+            if len(newfiles) >= 1:
+                #rebuild in progress, check timestamp of first file
+                errors.append(channel)
+            #check for outdated repodata
+            try:
+                stamp = datetime.datetime.fromtimestamp(os.path.getmtime("/var/cache/rhn/repodata/"+channel+"/repomd.xml"))
+                now = datetime.datetime.today()
+                diff = now - stamp
+                diff = diff.seconds / 3600 + diff.days * 24
+                if options.debug: print "DEBUG: Difference for /var/cache/rhn/repodata/"+channel+"/repomd.xml is "+str(diff)+" hours"
+                if int(diff) >= options.criticalThres:
+                    if options.debug: print "DEBUG: File system timestamp difference (" + str(diff) + ") is higher than critical threshold (" + str(options.criticalThres) + ")"
+                    if channel not in errors: errors.append(channel)
+                    critError = True
+                    if options.debug: print "DEBUG: File system timestamp difference (" + str(diff) + ") is higher than warning threshold (" + str(options.criticalThres) + ")"
+                elif int(diff) >= options.warningThres:
+                    if channel not in errors: errors.append(channel)
+            except:
+                #unable to check filesystem
+                if options.debug: print "DEBUG: unable to check filesystem timestamp for /var/cache/rhn/repodata/"+channel+"/repomd.xml."
                 critError = True
-                if options.debug: print "DEBUG: File system timestamp difference (" + str(diff) + ") is higher than warning threshold (" + str(options.criticalThres) + ")"
-            elif int(diff) >= options.warningThres:
                 if channel not in errors: errors.append(channel)
-        except:
-            #unable to check filesystem
-            if options.debug: print "DEBUG: unable to check filesystem timestamp for /var/cache/rhn/repodata/"+channel+"/repomd.xml."
-            critError = True
-            if channel not in errors: errors.append(channel)
 
     #exit with appropriate Nagios / Icinga plugin return code and message
     if options.debug: print "ERRORS: " + str(errors)
